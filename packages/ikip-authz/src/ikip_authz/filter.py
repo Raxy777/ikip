@@ -14,6 +14,7 @@ from typing import Protocol
 
 from ikip_authz.context import AuthorizationContext
 from ikip_authz.decision import AccessDecision
+from ikip_authz.freshness import check_freshness
 
 
 class HasAcl(Protocol):
@@ -36,9 +37,13 @@ def authorize_scope(ctx: AuthorizationContext) -> AccessDecision:
 def evaluate_document(ctx: AuthorizationContext, acl: HasAcl) -> AccessDecision:
     """Decide whether the subject may see a single document. Deny-by-default.
 
-    TODO: implement staleness check against synced_at/max_staleness_seconds — a stale ACL
-    must deny or force re-check, not silently allow. See ADR-0003 and the safety spec.
+    Freshness is checked FIRST: a stale ACL cannot be trusted for its site/role data
+    either, so a stale cache denies outright rather than evaluating scope against data
+    that may no longer reflect upstream permissions (docs/safety/acl-sync-and-freshness.md).
     """
+    freshness = check_freshness(acl)
+    if not freshness.allowed:
+        return freshness  # already a DENY with a safe, audit-only reason
     if ctx.sites and acl.sites and not (ctx.sites & set(acl.sites)):
         return AccessDecision.deny("site scope mismatch")
     if acl.roles_allowed and not (ctx.roles & set(acl.roles_allowed)):

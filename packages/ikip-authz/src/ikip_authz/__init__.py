@@ -11,12 +11,33 @@ call into here. This module is deny-by-default: if a decision cannot be made con
 
 from ikip_authz.context import AuthorizationContext
 from ikip_authz.decision import AccessDecision, Effect
-from ikip_authz.filter import authorize_scope, filter_candidates
+from ikip_authz.filter import authorize_scope, evaluate_document, filter_candidates
+from ikip_authz.freshness import check_freshness
+from ikip_authz.sync import (
+    AclEvent,
+    AclSource,
+    AclStore,
+    EventType,
+    InMemoryAclStore,
+    SyncReport,
+    apply_event,
+    reconcile,
+)
 
 __all__ = [
     "AuthorizationContext",
     "AccessDecision",
     "Effect",
     "authorize_scope",
+    "evaluate_document",
     "filter_candidates",
+    "check_freshness",
+    "AclEvent",
+    "AclSource",
+    "AclStore",
+    "EventType",
+    "InMemoryAclStore",
+    "SyncReport",
+    "apply_event",
+    "reconcile",
 ]

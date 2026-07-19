@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 import pytest
 
@@ -14,8 +15,13 @@ class FakeAcl:
     document_id: str
     sites: tuple[str, ...] = ()
     roles_allowed: tuple[str, ...] = ()
+    # Default to freshly synced so scope tests isolate site/role, not staleness.
     synced_at: str | None = None
-    max_staleness_seconds: int | None = None
+    max_staleness_seconds: int | None = 3600
+
+
+def _fresh() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _ctx(**kw) -> AuthorizationContext:
@@ -35,19 +41,25 @@ def test_no_roles_denied() -> None:
 
 def test_role_mismatch_denied() -> None:
     ctx = _ctx(roles=frozenset({"viewer"}))
-    acl = FakeAcl("d1", roles_allowed=("admin",))
+    acl = FakeAcl("d1", roles_allowed=("admin",), synced_at=_fresh())
     assert not evaluate_document(ctx, acl).allowed
 
 
 def test_site_mismatch_denied() -> None:
     ctx = _ctx(roles=frozenset({"eng"}), sites=frozenset({"site-a"}))
-    acl = FakeAcl("d1", sites=("site-b",), roles_allowed=("eng",))
+    acl = FakeAcl("d1", sites=("site-b",), roles_allowed=("eng",), synced_at=_fresh())
     assert not evaluate_document(ctx, acl).allowed
+
+
+def test_authorized_when_fresh_and_in_scope() -> None:
+    ctx = _ctx(roles=frozenset({"eng"}), sites=frozenset({"site-a"}))
+    acl = FakeAcl("d1", sites=("site-a",), roles_allowed=("eng",), synced_at=_fresh())
+    assert evaluate_document(ctx, acl).allowed
 
 
 def test_filter_removes_unauthorized() -> None:
     ctx = _ctx(roles=frozenset({"eng"}), sites=frozenset({"site-a"}))
-    allowed = FakeAcl("d1", sites=("site-a",), roles_allowed=("eng",))
-    blocked = FakeAcl("d2", sites=("site-b",), roles_allowed=("eng",))
+    allowed = FakeAcl("d1", sites=("site-a",), roles_allowed=("eng",), synced_at=_fresh())
+    blocked = FakeAcl("d2", sites=("site-b",), roles_allowed=("eng",), synced_at=_fresh())
     out = filter_candidates(ctx, [(allowed, "keep"), (blocked, "drop")])
     assert out == ["keep"]
