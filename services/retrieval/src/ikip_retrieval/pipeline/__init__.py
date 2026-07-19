@@ -4,9 +4,10 @@
               -> assemble_evidence -> [gateway] -> validate -> answer | abstain
 
 Every search stage takes an AuthorizationContext, so retrieval cannot run before
-authorization. The gateway call and output validation live in services/gateway and
-packages/ikip-statements respectively; this package orchestrates and, on any failure,
-routes to abstain.
+authorization. The gateway call goes through the AnswerGateway port; output validation
+uses packages/ikip-statements. `compose.compose_answer` orchestrates the generation ->
+validate -> answer|abstain tail and, on any validation or gateway failure, routes to a
+safe abstention — an unvalidated draft never reaches the user.
 """
 
 __all__: list[str] = []

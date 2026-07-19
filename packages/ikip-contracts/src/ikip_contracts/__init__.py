@@ -1,11 +1,47 @@
-"""ikip-contracts — models generated from /contracts plus thin hand-written helpers.
+"""ikip-contracts — typed models mirroring /contracts (single source of truth).
 
-Do not hand-edit generated shapes here. Edit the JSON Schema under contracts/schemas and
-run `just codegen`. The generated module is `_generated.py` (produced by tooling).
+The JSON Schemas under contracts/schemas are authoritative. These Python models are kept
+in lock-step with them and are strict (`extra="forbid"`) so unexpected fields fail
+validation rather than passing silently. When `just codegen` is wired up, generated shapes
+supersede these hand-written ones.
 """
 
-# from ikip_contracts._generated import (  # noqa: ERA001 -- populated by `just codegen`
-#     Answer, Citation, Evidence, Provenance, AclPolicy, Abstention, StatementClass,
-# )
+from ikip_contracts.enums import (
+    AbstentionReason,
+    Authority,
+    Classification,
+    Outcome,
+    RetrievalChannel,
+    StatementClass,
+)
+from ikip_contracts.models import (
+    AclPolicy,
+    Abstention,
+    Answer,
+    Citation,
+    Claim,
+    Conflict,
+    Evidence,
+    ProcessingVersions,
+    Provenance,
+)
 
-__all__: list[str] = []
+__all__ = [
+    # enums
+    "AbstentionReason",
+    "Authority",
+    "Classification",
+    "Outcome",
+    "RetrievalChannel",
+    "StatementClass",
+    # models
+    "AclPolicy",
+    "Abstention",
+    "Answer",
+    "Citation",
+    "Claim",
+    "Conflict",
+    "Evidence",
+    "ProcessingVersions",
+    "Provenance",
+]

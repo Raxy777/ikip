@@ -1,13 +1,28 @@
 """ikip-statements — the safety-critical claim layer.
 
-Two jobs:
-  1. classify(claim, evidence) -> StatementClass — is this a historical observation, a
-     recommendation, an approved procedure, completed work, or an inference?
-  2. validate_support(answer, evidence) -> bool — does every claim cite evidence that
-     actually supports it, with the correct statement class?
+Two responsibilities:
+  1. Statement classification — is a claim a historical observation, a recommendation, an
+     approved procedure, completed work, or an inference? (see docs/safety/statement-classification.md)
+  2. Claim-support & citation-coverage validation — does every claim cite authorized
+     evidence, carry a defensible class, and disclose conflicts when they exist?
 
-Conflating these classes is the primary way this platform could cause industrial harm,
-so this package's tests carry the highest bar and feed evaluation/suites/grounding_and_citation.
+Conflating statement classes is the primary way this platform could contribute to
+industrial harm, so this package carries the highest test bar and feeds
+evaluation/suites/grounding_and_citation. `validate_answer` is deterministic and must
+ALWAYS hold regardless of model quality; semantic entailment grading is a separate,
+model-assisted concern in evaluation/graders.
 """
 
-__all__: list[str] = []
+from ikip_statements.validator import (
+    ValidationResult,
+    Violation,
+    ViolationCode,
+    validate_answer,
+)
+
+__all__ = [
+    "ValidationResult",
+    "Violation",
+    "ViolationCode",
+    "validate_answer",
+]
