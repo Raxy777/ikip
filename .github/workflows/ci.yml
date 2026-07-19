@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Sync workspace
+        run: uv sync --all-packages
+      - name: Lint & type check
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run mypy packages services
+      - name: Validate contracts
+        run: uv run python contracts/codegen/validate.py
+      - name: Unit & contract tests
+        run: uv run pytest packages services
+      - name: Security safety gates
+        run: uv run pytest tests/security
+
+  evaluation-gate:
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --all-packages
+      # Gates the release on benchmark regression. Holdout is provisioned at runtime,
+      # never committed (see evaluation/benchmark/holdout/README.md).
+      - name: Evaluation gate
+        run: uv run python -m evaluation.run --suite all --gate
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run lint

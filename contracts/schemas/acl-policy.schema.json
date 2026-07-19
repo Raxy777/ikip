@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ikip.local/contracts/schemas/acl-policy.v1.json",
+  "title": "AclPolicy",
+  "description": "Document-level authorization attached to each governed document. Evaluated by ikip-authz BEFORE any retrieval. Deny-by-default.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["document_id", "owner", "sites", "roles_allowed", "source_of_truth"],
+  "properties": {
+    "document_id": { "type": "string" },
+    "owner": { "type": "string", "description": "Information owner accountable for this document." },
+    "sites": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Sites/facilities this document is scoped to."
+    },
+    "roles_allowed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Roles permitted to retrieve this document."
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["public", "internal", "restricted", "confidential"]
+    },
+    "source_of_truth": {
+      "type": "string",
+      "description": "The upstream system that owns this ACL (e.g. EDMS group). Drives synchronization and staleness detection.",
+      "$comment": "See docs/safety/acl-sync-and-freshness.md — freshness is the highest-risk open design area."
+    },
+    "synced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this ACL was last reconciled with its source_of_truth."
+    },
+    "max_staleness_seconds": {
+      "type": "integer",
+      "description": "If (now - synced_at) exceeds this, authz treats the ACL as stale and denies or forces re-check."
+    }
+  }
+}

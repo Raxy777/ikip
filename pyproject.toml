@@ -1,0 +1,52 @@
+[project]
+name = "industrial-knowledge-intelligence"
+version = "0.0.0"
+description = "Industrial Knowledge Intelligence Platform — Unified Asset & Operations Brain"
+requires-python = ">=3.12"
+readme = "README.md"
+
+# This is the workspace root. Deployable services and shared libraries are
+# managed as workspace members so shared contracts cannot drift between them.
+[tool.uv.workspace]
+members = [
+    "packages/*",
+    "services/*",
+]
+
+[tool.uv.sources]
+ikip-contracts = { workspace = true }
+ikip-authz = { workspace = true }
+ikip-provenance = { workspace = true }
+ikip-statements = { workspace = true }
+ikip-audit = { workspace = true }
+ikip-observability = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "mypy>=1.11",
+    "ruff>=0.6",
+    "jsonschema>=4",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["packages", "services"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC"]
+# S101 (assert) is allowed in tests only; configured per-file below.
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+namespace_packages = true
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "services", "tests"]
+addopts = "-q"

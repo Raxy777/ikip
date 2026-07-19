@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ikip.local/contracts/schemas/statement-class.v1.json",
+  "title": "StatementClass",
+  "description": "Classification of every claim in a generated answer. Conflating these classes is the primary way this system could cause industrial harm, so the class is a first-class, mandatory field on every claim.",
+  "type": "string",
+  "enum": [
+    "historical_observation",
+    "recommendation",
+    "approved_procedure",
+    "completed_work",
+    "inference"
+  ],
+  "$comment": "historical_observation: something recorded as observed in the past. recommendation: something a source advised, NOT necessarily done or approved. approved_procedure: an authorized instruction currently in force. completed_work: work recorded as actually performed. inference: a conclusion synthesized from evidence, not stated verbatim in any source."
+}

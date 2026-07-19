@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ikip.local/contracts/events/ingestion-job.v1.json",
+  "title": "IngestionJob",
+  "description": "An idempotent processing job. Reprocessing with a new processing version produces a new derived artifact set without mutating originals.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_id", "document_id", "kind", "idempotency_key"],
+  "properties": {
+    "job_id": { "type": "string" },
+    "document_id": { "type": "string" },
+    "kind": {
+      "type": "string",
+      "enum": ["ingest", "reprocess", "correct", "reindex"]
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Ensures the same job is not applied twice."
+    },
+    "processing_versions": { "type": "object", "additionalProperties": true },
+    "reason": { "type": "string", "description": "For corrections/reprocess: why this job was created." }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ikip.local/contracts/events/audit-event.v1.json",
+  "title": "AuditEvent",
+  "description": "An append-only audit record. Uses governed identifiers and redaction rules; unnecessary document content and secrets are never logged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "occurred_at", "actor", "action", "decision"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "actor": {
+      "type": "object",
+      "description": "Identity reference only — no PII beyond the governed subject ID.",
+      "additionalProperties": true
+    },
+    "action": {
+      "type": "string",
+      "enum": ["query", "authorize_decision", "citation_preview", "feedback", "correction", "deletion", "admin"]
+    },
+    "decision": { "type": "string", "enum": ["allow", "deny", "abstain", "n/a"] },
+    "request_id": { "type": "string" },
+    "evidence_ids": { "type": "array", "items": { "type": "string" } },
+    "config_version": { "type": "string" },
+    "latency_ms": { "type": "integer" }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ikip.local/contracts/schemas/answer.v1.json",
+  "title": "Answer",
+  "description": "A grounded answer OR an abstention. Exactly one of `claims`/`abstention` is populated. Validated as untrusted model output before it may be shown.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "outcome", "config_version"],
+  "properties": {
+    "request_id": { "type": "string" },
+    "outcome": { "type": "string", "enum": ["answered", "abstained"] },
+    "claims": {
+      "type": "array",
+      "description": "Present when outcome=answered. Every claim MUST carry a citation.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "text", "citation"],
+        "properties": {
+          "claim_id": { "type": "string" },
+          "text": { "type": "string" },
+          "citation": { "$ref": "citation.v1.json" }
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "Material conflicts between sources that were disclosed rather than silently resolved.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "abstention": { "$ref": "abstention.v1.json" },
+    "config_version": {
+      "type": "string",
+      "description": "The exact answer/model/prompt configuration used, for reproducibility and audit."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "outcome": { "const": "answered" } } },
+      "then": { "required": ["claims"] }
+    },
+    {
+      "if": { "properties": { "outcome": { "const": "abstained" } } },
+      "then": { "required": ["abstention"] }
+    }
+  ]
+}

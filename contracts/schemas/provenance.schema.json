@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ikip.local/contracts/schemas/provenance.v1.json",
+  "title": "Provenance",
+  "description": "Lineage attached to every derived artifact and every answer. Enables reproduction, correction propagation, and deletion enumeration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_document_id",
+    "source_revision",
+    "processing_versions"
+  ],
+  "properties": {
+    "source_document_id": {
+      "type": "string",
+      "description": "Stable ID of the immutable original."
+    },
+    "source_revision": {
+      "type": "string",
+      "description": "Revision/version of the source document this artifact derives from."
+    },
+    "source_checksum": {
+      "type": "string",
+      "description": "Checksum of the original object at processing time."
+    },
+    "source_coordinates": {
+      "type": "object",
+      "description": "Where in the source this artifact came from (page, section, bbox, char span).",
+      "additionalProperties": true
+    },
+    "processing_versions": {
+      "type": "object",
+      "description": "Exact versions of every processing step, so an artifact can be reproduced or invalidated when a step changes.",
+      "additionalProperties": false,
+      "required": ["parser", "chunker", "embedding_model"],
+      "properties": {
+        "parser": { "type": "string" },
+        "ocr_engine": { "type": "string" },
+        "chunker": { "type": "string" },
+        "embedding_model": { "type": "string" },
+        "prompt_template": { "type": "string" },
+        "schema_version": { "type": "string" }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,41 @@
+# Secrets & local config
+.env
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# uv
+.uv/
+
+# Node / web
+node_modules/
+web/dist/
+web/.vite/
+
+# Generated code (regenerated from contracts/ via `just codegen`)
+web/src/lib/generated/*
+!web/src/lib/generated/.gitkeep
+
+# Evaluation — the blind holdout must never be committed
+evaluation/benchmark/holdout/*
+!evaluation/benchmark/holdout/README.md
+evaluation/reports/*
+!evaluation/reports/.gitkeep
+
+# Local data & artifacts
+*.log
+.DS_Store
+tmp/
+scratch/
+doc.xml
+plan.txt

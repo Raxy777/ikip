@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ikip.local/contracts/schemas/citation.v1.json",
+  "title": "Citation",
+  "description": "A claim-level citation linking one claim in an answer to the exact authorized evidence supporting it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claim_id", "evidence_ids", "statement_class"],
+  "properties": {
+    "claim_id": { "type": "string" },
+    "evidence_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Evidence supporting this specific claim. A claim with no evidence is not allowed to appear in an answer."
+    },
+    "statement_class": { "$ref": "statement-class.v1.json" },
+    "source_coordinates": {
+      "type": "object",
+      "description": "Location within the source for the citation preview (page, section, span).",
+      "additionalProperties": true
+    },
+    "authority": {
+      "type": "string",
+      "enum": ["approved", "draft", "superseded", "withdrawn", "unknown"]
+    }
+  }
+}

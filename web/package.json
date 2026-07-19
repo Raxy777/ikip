@@ -1,0 +1,25 @@
+{
+  "name": "ikip-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Web Application — governed search, cited Q&A, source viewer, asset profiles, review queue, admin.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "codegen": "json-schema-to-typescript -i ../contracts/schemas -o src/lib/generated"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "json-schema-to-typescript": "^15.0.0",
+    "eslint": "^9.0.0"
+  }
+}

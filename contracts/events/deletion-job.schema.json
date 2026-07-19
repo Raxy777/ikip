@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ikip.local/contracts/events/deletion-job.v1.json",
+  "title": "DeletionJob",
+  "description": "An authorized deletion. A deletion is NOT complete until residual-artifact tests pass and a minimal verification record is written. See docs/runbooks/deletion-verification.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_id", "scope", "authorized_by", "hold_check"],
+  "properties": {
+    "job_id": { "type": "string" },
+    "scope": {
+      "type": "object",
+      "description": "What is being deleted: originals, previews, OCR, chunks, embeddings, indexes, relations, caches, histories.",
+      "additionalProperties": true
+    },
+    "authorized_by": { "type": "string" },
+    "hold_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legal_hold", "record_hold"],
+      "properties": {
+        "legal_hold": { "type": "boolean" },
+        "record_hold": { "type": "boolean" }
+      }
+    },
+    "backup_treatment": {
+      "type": "string",
+      "enum": ["cryptographic_erasure", "scheduled_expiry"]
+    },
+    "verification": {
+      "type": "object",
+      "description": "Signed result of residual-artifact search tests and backup-policy confirmation.",
+      "additionalProperties": true
+    }
+  }
+}

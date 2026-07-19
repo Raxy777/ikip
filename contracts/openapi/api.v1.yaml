@@ -1,0 +1,72 @@
+openapi: 3.1.0
+info:
+  title: Industrial Knowledge Intelligence Platform API
+  version: 1.0.0
+  description: >
+    Decision-support API. Every query is authorized before retrieval. Answers are
+    evidence-grounded with claim-level citations, or a safe abstention. No endpoint
+    controls equipment.
+servers:
+  - url: /api/v1
+paths:
+  /query:
+    post:
+      summary: Ask a grounded question or receive a safe abstention.
+      operationId: submitQuery
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string }
+                asset_filter: { type: object, additionalProperties: true }
+                site_filter: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: Grounded answer or abstention.
+          content:
+            application/json:
+              schema: { $ref: "../schemas/answer.schema.json" }
+        "403":
+          description: Denied without revealing restricted content.
+  /citations/{claimId}/source:
+    get:
+      summary: Open the cited source. Authorization is re-checked here because access may have changed.
+      operationId: getCitationSource
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: claimId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Short-lived authorized preview of the exact source location. }
+        "403": { description: Access or status changed; explained without leakage. }
+  /feedback:
+    post:
+      summary: Submit feedback or a correction that creates a governed review item.
+      operationId: submitFeedback
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_id]
+              properties:
+                request_id: { type: string }
+                rating: { type: string, enum: [helpful, unhelpful, incorrect] }
+                note: { type: string }
+      responses:
+        "202": { description: Feedback recorded / review item created. }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

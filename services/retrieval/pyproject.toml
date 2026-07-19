@@ -1,0 +1,13 @@
+[project]
+name = "ikip-retrieval"
+version = "0.0.0"
+description = "Retrieval & Answer Service — authorization-filtered hybrid retrieval and grounded generation."
+requires-python = ">=3.12"
+dependencies = ["ikip-authz", "ikip-contracts", "ikip-statements", "ikip-provenance", "ikip-audit", "ikip-observability"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ikip_retrieval"]
