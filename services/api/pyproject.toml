@@ -3,7 +3,15 @@ name = "ikip-api"
 version = "0.0.0"
 description = "Application API — authentication, authorization enforcement, orchestration, and audit."
 requires-python = ">=3.12"
-dependencies = ["ikip-authz", "ikip-contracts", "ikip-audit", "ikip-observability"]
+dependencies = [
+    "ikip-authz",
+    "ikip-contracts",
+    "ikip-retrieval",
+    "ikip-audit",
+    "ikip-observability",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
 
 [build-system]
 requires = ["hatchling"]

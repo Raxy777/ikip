@@ -23,9 +23,10 @@ import re
 from dataclasses import dataclass, field
 
 from ikip_authz.sync import AclStore
-from ikip_contracts import AclPolicy, Authority, ProcessingVersions, Provenance, RetrievalChannel
+from ikip_contracts import Authority, ProcessingVersions, Provenance, RetrievalChannel
 
-from ikip_retrieval.pipeline.types import Candidate, CandidateAcl, RetrievalQuery
+from ikip_retrieval.adapters._acl_resolve import resolve_acl
+from ikip_retrieval.pipeline.types import Candidate, RetrievalQuery
 
 _TOKEN = re.compile(r"[a-z0-9]+")
 
@@ -127,31 +128,9 @@ class LexicalIndex:
             text=chunk.text,
             provenance=prov,
             authority=chunk.authority,
-            acl=self._resolve_acl(chunk.document_id),
+            acl=resolve_acl(self._acls, chunk.document_id),
             channel=RetrievalChannel.LEXICAL,
             retrieval_score=score,
             applicability=chunk.applicability,
             revision_ordinal=chunk.revision_ordinal,
         )
-
-    def _resolve_acl(self, document_id: str) -> CandidateAcl:
-        """Return the document's ACL from the store, or a fail-closed ACL if absent.
-
-        A missing ACL is treated as "no authorization data" — empty scope and no
-        synced_at — so the downstream freshness/scope gate denies. The adapter never
-        fabricates an allow.
-        """
-        acl = self._acls.get(document_id)
-        if acl is None:
-            return CandidateAcl(document_id=document_id)  # no synced_at -> fails closed
-        return _to_candidate_acl(acl)
-
-
-def _to_candidate_acl(acl: AclPolicy) -> CandidateAcl:
-    return CandidateAcl(
-        document_id=acl.document_id,
-        sites=tuple(acl.sites),
-        roles_allowed=tuple(acl.roles_allowed),
-        synced_at=acl.synced_at.isoformat() if acl.synced_at is not None else None,
-        max_staleness_seconds=acl.max_staleness_seconds,
-    )

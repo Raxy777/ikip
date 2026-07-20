@@ -4,6 +4,7 @@
 dependency. pgvector and the embedding client are still stubs pending infrastructure.
 """
 
+from ikip_retrieval.adapters.exact_index import ExactIndex, ExactRecord
 from ikip_retrieval.adapters.lexical_index import IndexedChunk, LexicalIndex
 
-__all__ = ["LexicalIndex", "IndexedChunk"]
+__all__ = ["LexicalIndex", "IndexedChunk", "ExactIndex", "ExactRecord"]
