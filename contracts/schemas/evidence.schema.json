@@ -24,7 +24,7 @@
     "retrieval_score": { "type": "number" },
     "retrieved_by": {
       "type": "string",
-      "enum": ["exact", "lexical", "semantic", "relationship"]
+      "enum": ["exact", "lexical", "semantic", "relationship", "shape"]
     }
   }
 }

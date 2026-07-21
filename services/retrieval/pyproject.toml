@@ -3,7 +3,17 @@ name = "ikip-retrieval"
 version = "0.0.0"
 description = "Retrieval & Answer Service — authorization-filtered hybrid retrieval and grounded generation."
 requires-python = ">=3.12"
-dependencies = ["ikip-authz", "ikip-contracts", "ikip-statements", "ikip-provenance", "ikip-audit", "ikip-observability"]
+dependencies = [
+    "ikip-authz",
+    "ikip-contracts",
+    "ikip-statements",
+    "ikip-provenance",
+    "ikip-audit",
+    "ikip-observability",
+    # Query-side shape descriptor computation for the SHAPE channel (§C). Light dep; the
+    # ingestion side already carries numpy/trimesh from Phase 1.
+    "numpy>=1.26",
+]
 
 [build-system]
 requires = ["hatchling"]

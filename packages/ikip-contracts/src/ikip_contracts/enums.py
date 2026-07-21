@@ -37,6 +37,10 @@ class RetrievalChannel(str, enum.Enum):
     LEXICAL = "lexical"
     SEMANTIC = "semantic"
     RELATIONSHIP = "relationship"
+    # CAD shape-similarity channel (§C). Ranks parts by geometric-descriptor distance to a
+    # reference part. Like every channel it returns raw candidates and is authorized in
+    # merge_rerank before ranking, so a restricted part can never surface here either.
+    SHAPE = "shape"
 
 
 class Outcome(str, enum.Enum):

@@ -18,8 +18,10 @@ from ikip_contracts import AclPolicy
 
 from ikip_retrieval.adapters.exact_index import ExactIndex, ExactRecord
 from ikip_retrieval.adapters.lexical_index import IndexedChunk, LexicalIndex
+from ikip_retrieval.pipeline.search_shape import ShapeSearchChannel
 from ikip_retrieval.ports.answer_gateway import AnswerGateway
 from ikip_retrieval.ports.search_channel import SearchChannel
+from ikip_retrieval.ports.shape_store import InMemoryShapeStore, ShapeRecord
 
 from ikip_api.dev_gateway import DevAnswerGateway
 
@@ -119,7 +121,9 @@ def _seed_indexes(acl_store: AclStore) -> list[SearchChannel]:
             identifiers=("V-12",),
         )
     )
-    return [exact, lexical]
+    shape_store = InMemoryShapeStore()
+    shape_channel = ShapeSearchChannel(shape_store, acl_store)
+    return [exact, lexical, shape_channel]
 
 
 def build_services(config_version: str = "dev-0") -> Services:

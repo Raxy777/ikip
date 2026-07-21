@@ -75,4 +75,27 @@ CREATE TABLE IF NOT EXISTS assembly_edge (
 CREATE INDEX IF NOT EXISTS assembly_edge_child_idx ON assembly_edge (child_part_id);
 CREATE INDEX IF NOT EXISTS assembly_edge_parent_idx ON assembly_edge (parent_part_id);
 
--- TODO (Phase 3): model_shape (shape descriptors + vector index).
+-- Phase 3 (§C): shape-similarity descriptors. One row per part with a computed geometric
+-- descriptor (D2 shape-distribution histogram, L2-normalized). The SHAPE retrieval channel
+-- ranks parts by cosine distance to a reference descriptor. Only FULL_GEOMETRY parts get a
+-- descriptor; metadata-only parts have no geometry to describe.
+--
+-- The descriptor is stored as a pgvector column so ANN indexing is available at scale. The
+-- dimension MUST match the ingestion enrich N_BINS (64). If pgvector is not installed, the
+-- column can fall back to DOUBLE PRECISION[] and search does an exact scan.
+CREATE TABLE IF NOT EXISTS model_shape (
+    shape_id         TEXT PRIMARY KEY,
+    part_id          TEXT NOT NULL REFERENCES part(part_id) ON DELETE CASCADE,
+    document_id      TEXT NOT NULL REFERENCES document(document_id),
+    descriptor_kind  TEXT NOT NULL DEFAULT 'd2-histogram',
+    descriptor_dim   INTEGER NOT NULL DEFAULT 64,
+    -- Prefer pgvector: `descriptor vector(64)`. Portable fallback shown here; the migration
+    -- runner upgrades to vector(64) when the pgvector extension is present.
+    descriptor       DOUBLE PRECISION[] NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (part_id, descriptor_kind)
+);
+CREATE INDEX IF NOT EXISTS model_shape_part_idx ON model_shape (part_id);
+CREATE INDEX IF NOT EXISTS model_shape_document_idx ON model_shape (document_id);
+-- With pgvector: CREATE INDEX model_shape_descriptor_idx ON model_shape
+--   USING ivfflat (descriptor vector_cosine_ops) WITH (lists = 100);
