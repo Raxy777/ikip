@@ -18,7 +18,10 @@ the same part_ids and edge set.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Protocol, runtime_checkable
+
+from ikip_contracts import AclPolicy, Authority, Classification
 
 from ikip_ingestion.extract.types import ExtractedModel, PartRecord
 
@@ -151,11 +154,144 @@ def resolve_identity(
     return IdentityResult(parts=resolved, edges=edges)
 
 
+# ---------------------------------------------------------------------------
+# Governance mapping (§G): PLM-synced vs loose-file, authority, export control
+# ---------------------------------------------------------------------------
+
+# Property keys that, when present, indicate export-controlled content. Matching is
+# case-insensitive on the key; ANY hit forces a fail-closed RESTRICTED classification.
+_EXPORT_CONTROL_KEYS = frozenset({
+    "itar", "ear", "export_control", "export-control", "exportcontrol",
+    "eccn", "usml_category", "classification",
+})
+# Property values (lowercased) that signal export control regardless of key.
+_EXPORT_CONTROL_VALUES = frozenset({"itar", "ear99", "restricted", "export controlled"})
+
+
+@dataclass(frozen=True)
+class PlmRecord:
+    """A record from the PLM system of truth for a part. Absence = loose file.
+
+    `source_of_truth` and `synced_at` flow straight into the AclPolicy so the freshness gate
+    treats a PLM-synced part exactly like any other governed document.
+    """
+
+    part_number: str
+    source_of_truth: str
+    synced_at: datetime
+    owner: str
+    sites: tuple[str, ...]
+    roles_allowed: tuple[str, ...]
+    authority: Authority = Authority.APPROVED
+    classification: Classification | None = None
+    max_staleness_seconds: int | None = None
+
+
+@runtime_checkable
+class PlmSync(Protocol):
+    """Read-only lookup into the PLM system of truth, keyed by part_number."""
+
+    def lookup(self, part_number: str | None) -> PlmRecord | None:
+        """Return the PLM record for a part_number, or None for a loose (un-synced) file."""
+        ...
+
+
+@dataclass(frozen=True)
+class GovernanceDecision:
+    """The governance verdict for a resolved part.
+
+    `acl` is None when the part is a loose file with no PLM record — it cannot be authorized
+    and `needs_review` is True. `authority` is UNKNOWN for loose files, which the retrieval
+    ranker already excludes from current guidance (Authority.is_current_guidance is False).
+    """
+
+    part_id: str
+    authority: Authority
+    classification: Classification | None
+    acl: AclPolicy | None
+    needs_review: bool
+    reason: str = ""
+
+
+def _export_controlled(properties: dict[str, str]) -> bool:
+    """True if any property key/value signals export control."""
+    for k, v in properties.items():
+        if k.lower() in _EXPORT_CONTROL_KEYS:
+            return True
+        if isinstance(v, str) and v.strip().lower() in _EXPORT_CONTROL_VALUES:
+            return True
+    return False
+
+
+def govern_part(
+    resolved: ResolvedPart,
+    *,
+    plm: PlmSync,
+    document_id: str,
+) -> GovernanceDecision:
+    """Map a resolved part to its governance verdict.
+
+    Rules (fail closed):
+      - Loose file (no PLM record) → authority=UNKNOWN, no ACL, needs_review=True. It is
+        excluded from ranking until a reviewer approves it (UNKNOWN is not current guidance).
+      - PLM-synced → build an AclPolicy from the PLM record (source_of_truth/synced_at carry
+        through to the freshness gate); authority comes from PLM.
+      - Export-controlled (ITAR/EAR/etc. in properties) → classification forced to RESTRICTED
+        regardless of PLM classification. Fails closed: even a PLM-approved part is RESTRICTED
+        if its properties declare export control.
+    """
+    part = resolved.part_record
+    export_controlled = _export_controlled(part.properties)
+
+    plm_record = plm.lookup(part.part_number)
+
+    if plm_record is None:
+        # Loose file: unknown authority, no ACL, must be reviewed before it can rank.
+        classification = Classification.RESTRICTED if export_controlled else None
+        return GovernanceDecision(
+            part_id=resolved.part_id,
+            authority=Authority.UNKNOWN,
+            classification=classification,
+            acl=None,
+            needs_review=True,
+            reason="loose file: no PLM record; authority UNKNOWN, excluded from ranking until approved",
+        )
+
+    # PLM-synced: classification is RESTRICTED if export-controlled, else PLM's value.
+    classification = (
+        Classification.RESTRICTED if export_controlled else plm_record.classification
+    )
+    acl = AclPolicy(
+        document_id=document_id,
+        owner=plm_record.owner,
+        sites=list(plm_record.sites),
+        roles_allowed=list(plm_record.roles_allowed),
+        source_of_truth=plm_record.source_of_truth,
+        classification=classification,
+        synced_at=plm_record.synced_at,
+        max_staleness_seconds=plm_record.max_staleness_seconds,
+    )
+    needs_review = export_controlled  # RESTRICTED content gets a review touch even when synced
+    reason = "export-controlled: classification forced RESTRICTED (fail closed)" if export_controlled else ""
+    return GovernanceDecision(
+        part_id=resolved.part_id,
+        authority=plm_record.authority,
+        classification=classification,
+        acl=acl,
+        needs_review=needs_review,
+        reason=reason,
+    )
+
+
 __all__ = [
     "AssemblyEdge",
+    "GovernanceDecision",
     "IdentityResult",
     "InMemoryPartStore",
     "PartStore",
+    "PlmRecord",
+    "PlmSync",
     "ResolvedPart",
+    "govern_part",
     "resolve_identity",
 ]

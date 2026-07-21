@@ -8,8 +8,20 @@ turns into either a review-queue item or a rejection.
 
 Scope, honestly stated: this is process-local exception + timeout isolation, not a security
 sandbox. True isolation (seccomp/container/subprocess with dropped privileges) is a
-deployment concern flagged in Phase 4's sandbox hardening. The seam is here so hardening
-swaps the executor without touching handlers or stages.
+deployment concern. The seam is here so hardening swaps the executor without touching
+handlers or stages.
+
+Phase 4 sandbox hardening (§G). The seam is `run_sandboxed(fn, ...)`: today it runs `fn`
+in-process; a hardened deployment replaces the executor with an out-of-process runner
+(subprocess in a locked-down container: read-only root FS, no network, dropped caps,
+CPU/memory/wall-clock rlimits, non-root uid) WITHOUT changing any handler or stage. Two
+properties make that swap safe:
+  - Handlers never execute file contents — they only read bytes — so moving the read into a
+    child process changes only WHERE the parse happens, not WHAT it does.
+  - Any failure (crash, OOM-kill, timeout, non-zero exit) already maps to a structured
+    SandboxResult, so a killed child becomes HANDLER_ERROR/TIMEOUT → review, never a leak.
+The FreeCAD converter (Phase 4 Tier-3) already runs out of process via subprocess with a
+wall-clock timeout — it is the first consumer of this hardening boundary.
 """
 from __future__ import annotations
 
