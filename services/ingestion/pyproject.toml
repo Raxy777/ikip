@@ -3,7 +3,22 @@ name = "ikip-ingestion"
 version = "0.0.0"
 description = "Ingestion Workers — quarantine, parse/OCR, chunk, enrich, resolve identity, index; idempotent and deletion-aware."
 requires-python = ">=3.12"
-dependencies = ["ikip-contracts", "ikip-provenance", "ikip-audit", "ikip-observability"]
+dependencies = [
+    "ikip-contracts",
+    "ikip-provenance",
+    "ikip-audit",
+    "ikip-observability",
+    "trimesh>=4",
+    "numpy>=1.26",
+]
+
+# CAD STEP geometry extraction needs an OCCT binding. cadquery-ocp is the pip/uv-installable
+# wheel (pythonocc-core is conda-forge only). It is heavy (pulls vtk + matplotlib), so it is
+# OPTIONAL: install with `uv sync --extra cad-step`. When absent, the STEP handler declares
+# itself unavailable and STEP files route to the review queue (tiered degradation) rather
+# than crashing. Conda alternative: `conda install -c conda-forge pythonocc-core`.
+[project.optional-dependencies]
+cad-step = ["cadquery-ocp>=7.8"]
 
 [build-system]
 requires = ["hatchling"]

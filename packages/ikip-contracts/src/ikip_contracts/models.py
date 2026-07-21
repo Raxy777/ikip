@@ -38,6 +38,11 @@ class ProcessingVersions(BaseModel):
     ocr_engine: str | None = None
     prompt_template: str | None = None
     schema_version: str | None = None
+    # CAD extraction provenance (optional; present for CAD-derived artifacts). See
+    # provenance.schema.json and docs/architecture/06-ingestion-pipeline.md (route 5C).
+    geometry_kernel: str | None = None
+    tessellation: str | None = None
+    extraction_tier: str | None = None
 
 
 class Provenance(BaseModel):

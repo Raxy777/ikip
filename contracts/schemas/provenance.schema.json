@@ -25,7 +25,7 @@
     },
     "source_coordinates": {
       "type": "object",
-      "description": "Where in the source this artifact came from (page, section, bbox, char span).",
+      "description": "Where in the source this artifact came from. For documents: page, section, bbox, char span. For CAD models: cad_entity_type (solid|face|edge|pmi|property|part), cad_entity_id (kernel handle/persistent id), cad_part_ref (owning part in an assembly), cad_label (feature/property name). Open-ended so new source kinds can add coordinate keys without a schema change.",
       "additionalProperties": true
     },
     "processing_versions": {
@@ -39,7 +39,20 @@
         "chunker": { "type": "string" },
         "embedding_model": { "type": "string" },
         "prompt_template": { "type": "string" },
-        "schema_version": { "type": "string" }
+        "schema_version": { "type": "string" },
+        "geometry_kernel": {
+          "type": "string",
+          "description": "CAD B-rep kernel and version used to read geometry (e.g. 'OCCT-7.8.0'). Null for tessellated formats like STL."
+        },
+        "tessellation": {
+          "type": "string",
+          "description": "Tessellation engine/parameters that produced the canonical mesh (e.g. 'occt-incremental-mesh:0.1' or 'trimesh:4.12.2')."
+        },
+        "extraction_tier": {
+          "type": "string",
+          "description": "CAD extraction tier for this artifact: full_geometry | metadata_only | needs_conversion | blocked.",
+          "enum": ["full_geometry", "metadata_only", "needs_conversion", "blocked"]
+        }
       }
     },
     "created_at": { "type": "string", "format": "date-time" }
