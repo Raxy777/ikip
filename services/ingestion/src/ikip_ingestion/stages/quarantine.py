@@ -18,6 +18,7 @@ from enum import Enum
 
 from ikip_ingestion.extract.registry import MAGIC_READ_BYTES, HandlerRegistry
 from ikip_ingestion.extract.sandbox import SandboxFailure, SandboxResult
+from ikip_ingestion.extract.types import ExtractedModel, ExtractionTier
 
 
 class Disposition(str, Enum):
@@ -69,3 +70,19 @@ def route_extraction(result: SandboxResult) -> GateDecision:
         return GateDecision(Disposition.REVIEW, reason=f"extraction error: {result.detail}")
     # UNSUPPORTED: nothing claimed it.
     return GateDecision(Disposition.REJECT, reason=f"unsupported: {result.detail}")
+
+
+def route_model(model: ExtractedModel) -> GateDecision:
+    """Map a successfully-extracted model's tier to a disposition.
+
+    FULL_GEOMETRY → proceed (ADMIT).
+    METADATA_ONLY → proceed (ADMIT); downstream stages skip geometry steps.
+    NEEDS_CONVERSION → review queue so a human or converter can act.
+    BLOCKED → reject.
+    """
+    if model.tier is ExtractionTier.NEEDS_CONVERSION:
+        reason = next((w for w in model.warnings if w), "needs conversion to neutral format")
+        return GateDecision(Disposition.REVIEW, reason=reason)
+    if model.tier is ExtractionTier.BLOCKED:
+        return GateDecision(Disposition.REJECT, reason="format blocked by policy")
+    return GateDecision(Disposition.ADMIT)

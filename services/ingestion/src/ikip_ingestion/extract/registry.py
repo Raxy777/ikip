@@ -84,16 +84,22 @@ class HandlerRegistry:
 
 
 def default_registry() -> HandlerRegistry:
-    """Build the registry with the Tier-1 handlers wired in.
+    """Build the registry with Tier-1 (STEP, STL) and Tier-2/3 (OLE, blocked) handlers.
 
-    Imported lazily so a missing optional toolkit (OCCT) never breaks importing this module.
+    Registration order matters: STEP and STL are checked first (magic-byte reliable);
+    OLE is next (definitive 8-byte magic covers SolidWorks/CATIA compound files);
+    BlockedHandler is last (extension-only fallback for known-but-unreadable formats).
     """
+    from ikip_ingestion.extract.handlers.blocked import BlockedHandler
+    from ikip_ingestion.extract.handlers.ole_props import OlePropsHandler
     from ikip_ingestion.extract.handlers.step_occt import StepOcctHandler
     from ikip_ingestion.extract.handlers.stl_trimesh import StlTrimeshHandler
 
     reg = HandlerRegistry()
     reg.register(StepOcctHandler())
     reg.register(StlTrimeshHandler())
+    reg.register(OlePropsHandler())
+    reg.register(BlockedHandler())
     return reg
 
 

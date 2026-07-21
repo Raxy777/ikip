@@ -19,6 +19,11 @@ CREATE TABLE IF NOT EXISTS part (
 );
 CREATE INDEX IF NOT EXISTS part_part_number_idx ON part (part_number);
 
+-- Phase 2 (§D): geometry_available makes the tiered model explicit at the part level.
+-- A metadata-only part (proprietary file, no neutral geometry) sets this False so ranking
+-- and shape-similarity (Phase 3) skip it without inferring from a null mesh.
+ALTER TABLE part ADD COLUMN IF NOT EXISTS geometry_available BOOLEAN NOT NULL DEFAULT TRUE;
+
 -- The canonical tessellation + deterministic metrics for a part's geometry.
 -- Mesh is stored engine-neutral (flat arrays as JSONB here; a binary/columnar store can be
 -- swapped later). Metrics are denormalized for the part card and cheap filtering.
@@ -55,5 +60,19 @@ CREATE TABLE IF NOT EXISTS model_asset (
 );
 CREATE INDEX IF NOT EXISTS model_asset_asset_idx ON model_asset (asset_id);
 
--- TODO (Phase 2): assembly_edge, part.geometry_available/tier columns.
+-- Phase 2 (§D): assembly structure as a directed graph. A parent part "contains" a child
+-- part; the relationship channel walks these edges to answer "assemblies using part X".
+-- Edges reference canonical (deduped) part_ids, so a part shared across files has one node.
+CREATE TABLE IF NOT EXISTS assembly_edge (
+    parent_part_id   TEXT NOT NULL REFERENCES part(part_id) ON DELETE CASCADE,
+    child_part_id    TEXT NOT NULL REFERENCES part(part_id) ON DELETE CASCADE,
+    document_id      TEXT NOT NULL REFERENCES document(document_id),
+    relationship     TEXT NOT NULL DEFAULT 'contains',  -- contains|references
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (parent_part_id, child_part_id, relationship)
+);
+-- Reverse lookup: "which assemblies contain this part" walks child → parent.
+CREATE INDEX IF NOT EXISTS assembly_edge_child_idx ON assembly_edge (child_part_id);
+CREATE INDEX IF NOT EXISTS assembly_edge_parent_idx ON assembly_edge (parent_part_id);
+
 -- TODO (Phase 3): model_shape (shape descriptors + vector index).
