@@ -212,3 +212,55 @@ def test_unverified_admin_cannot_revoke() -> None:
     headers = {**_ADMIN, "X-Dev-Verified": "0"}
     r = _client().post("/admin/acl/revoke", json={"document_id": "pump-manual"}, headers=headers)
     assert r.status_code == 403
+
+
+class _CountingChannel:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def search(self, query: object, *, limit: int) -> list[object]:
+        self.calls += 1
+        return []
+
+
+class _CountingRepository:
+    def __init__(self) -> None:
+        self.list_calls = 0
+
+    def list(self) -> list[object]:
+        self.list_calls += 1
+        return []
+
+
+def test_search_gates_unverified_and_invalid_scope_before_channels() -> None:
+    from ikip_api.identity import development_identity
+    from ikip_authz import AuthorizationContext
+
+    for context in (
+        AuthorizationContext(subject_id="unverified", roles=frozenset({"engineer"})),
+        AuthorizationContext(subject_id="no-roles", identity_verified=True),
+    ):
+        services = build_services()
+        channel = _CountingChannel()
+        services.channels = [channel]  # type: ignore[assignment]
+        app = create_app(services)
+        app.dependency_overrides[development_identity] = lambda context=context: context
+        response = TestClient(app).post("/search", json={"question": "pump P-101"})
+        assert response.status_code == 403
+        assert channel.calls == 0
+
+
+def test_list_documents_verifies_identity_before_repository_access() -> None:
+    from ikip_api.identity import development_identity
+    from ikip_authz import AuthorizationContext
+
+    services = build_services()
+    repository = _CountingRepository()
+    services.upload_repository = repository  # type: ignore[assignment]
+    app = create_app(services)
+    app.dependency_overrides[development_identity] = lambda: AuthorizationContext(
+        subject_id="unverified", roles=frozenset({"engineer"})
+    )
+    response = TestClient(app).get("/documents")
+    assert response.status_code == 403
+    assert repository.list_calls == 0

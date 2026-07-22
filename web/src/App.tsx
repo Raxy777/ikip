@@ -3,11 +3,13 @@ import { IdentityBar } from "./features/identity-bar/IdentityBar";
 import { WorkspacePanel } from "./features/workspace/WorkspacePanel";
 import { AdminPanel } from "./features/admin/AdminPanel";
 import { AssetProfilePanel } from "./features/asset-profile/AssetProfilePanel";
+import { UploadPanel } from "./features/uploads/UploadPanel";
 import { ReviewQueuePanel } from "./features/review-queue/ReviewQueuePanel";
 
-type Tab = "workspace" | "asset-profile" | "review-queue" | "admin";
+type Tab = "uploads" | "workspace" | "asset-profile" | "review-queue" | "admin";
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: "uploads", label: "Uploads" },
   { id: "workspace", label: "Workspace" },
   { id: "asset-profile", label: "Asset profile" },
   { id: "review-queue", label: "Review queue" },
@@ -51,6 +53,7 @@ export function App() {
       </header>
 
       <main className="app-main">
+        {tab === "uploads" && <UploadPanel />}
         {tab === "workspace" && <WorkspacePanel />}
         {tab === "asset-profile" && <AssetProfilePanel />}
         {tab === "review-queue" && <ReviewQueuePanel />}

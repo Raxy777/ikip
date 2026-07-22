@@ -8,14 +8,14 @@ The dev profile seeds a tiny demo corpus across two sites and two authority stat
 authorization, freshness, ranking, and abstention behaviours are all exercisable from a
 running server. The seed data is obviously synthetic and lives only in memory.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ikip_authz.sync import AclStore, InMemoryAclStore
 from ikip_contracts import AclPolicy
-
 from ikip_retrieval.adapters.exact_index import ExactIndex, ExactRecord
 from ikip_retrieval.adapters.lexical_index import IndexedChunk, LexicalIndex
 from ikip_retrieval.pipeline.search_shape import ShapeSearchChannel
@@ -24,6 +24,7 @@ from ikip_retrieval.ports.search_channel import SearchChannel
 from ikip_retrieval.ports.shape_store import InMemoryShapeStore, ShapeRecord
 
 from ikip_api.dev_gateway import DevAnswerGateway
+from ikip_api.uploads import ObjectStore, Repository, UploadManager, build_persistence
 
 
 @dataclass
@@ -34,10 +35,13 @@ class Services:
     channels: list[SearchChannel]
     gateway: AnswerGateway
     config_version: str
+    uploads: UploadManager | None = None
+    upload_repository: Repository | None = None
+    object_store: ObjectStore | None = None
 
 
 def _now_iso() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _seed_acls(store: AclStore) -> None:
@@ -79,7 +83,9 @@ def _seed_acls(store: AclStore) -> None:
     )
 
 
-def _seed_indexes(acl_store: AclStore) -> list[SearchChannel]:
+def _seed_indexes(
+    acl_store: AclStore,
+) -> tuple[list[SearchChannel], ExactIndex, LexicalIndex, InMemoryShapeStore]:
     lexical = LexicalIndex(acl_store)
     exact = ExactIndex(acl_store)
 
@@ -123,17 +129,56 @@ def _seed_indexes(acl_store: AclStore) -> list[SearchChannel]:
     )
     shape_store = InMemoryShapeStore()
     shape_channel = ShapeSearchChannel(shape_store, acl_store)
-    return [exact, lexical, shape_channel]
+    return [exact, lexical, shape_channel], exact, lexical, shape_store
 
 
 def build_services(config_version: str = "dev-0") -> Services:
     """Build the dev composition. Seeds a synthetic in-memory corpus."""
     acl_store = InMemoryAclStore()
     _seed_acls(acl_store)
-    channels = _seed_indexes(acl_store)
+    channels, exact, lexical, shape_store = _seed_indexes(acl_store)
+    repo, objects = build_persistence()
+
+    def index_text(document_id: str, evidence_id: str, text: str) -> None:
+        lexical.add(IndexedChunk(evidence_id=evidence_id, document_id=document_id, text=text))
+        exact.add(
+            ExactRecord(evidence_id=evidence_id, document_id=document_id, text=text, identifiers=())
+        )
+
+    def index_shape(document_id: str, part_id: str, descriptor: list[float]) -> None:
+        shape_store.add(
+            ShapeRecord(
+                evidence_id=f"shape-{part_id}",
+                document_id=document_id,
+                part_id=part_id,
+                descriptor=descriptor,
+            )
+        )
+
+    # A durable process restart rehydrates ACLs and derived indexes before serving queries.
+    for doc in repo.list():
+        acl_store.upsert(
+            AclPolicy(
+                document_id=doc.document_id,
+                owner=doc.owner,
+                sites=doc.sites,
+                roles_allowed=doc.roles,
+                source_of_truth="upload",
+                synced_at=_now_iso(),
+                max_staleness_seconds=31536000,
+            )
+        )
+    for document_id, chunk_id, text in repo.iter_chunks():
+        index_text(document_id, chunk_id, text)
+    for document_id, part_id, descriptor in repo.iter_shapes():
+        index_shape(document_id, part_id, descriptor)
+    manager = UploadManager(repo, objects, index_text, index_shape, acl_store)
     return Services(
         acl_store=acl_store,
         channels=channels,
         gateway=DevAnswerGateway(),
         config_version=config_version,
+        uploads=manager,
+        upload_repository=repo,
+        object_store=objects,
     )

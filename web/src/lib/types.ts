@@ -117,3 +117,12 @@ export interface DevIdentity {
   sites: string[];
   verified: boolean;
 }
+
+export type ProcessingState = "received" | "processing" | "completed" | "completed_with_warnings" | "failed";
+export interface UploadedDocument {
+  document_id: string; filename: string; media_type: string; format: "PDF" | "STL" | "STEP";
+  size_bytes: number; checksum: string; owner: string; sites: string[]; roles: string[];
+  state: ProcessingState; message?: string | null; created_at: string; updated_at: string;
+  metadata: Record<string, unknown>;
+}
+export interface DocumentList { documents: UploadedDocument[]; count: number; }

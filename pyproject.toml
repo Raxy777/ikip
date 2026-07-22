@@ -22,6 +22,7 @@ ikip-provenance = { workspace = true }
 ikip-statements = { workspace = true }
 ikip-audit = { workspace = true }
 ikip-observability = { workspace = true }
+ikip-ingestion = { workspace = true }
 
 [dependency-groups]
 dev = [

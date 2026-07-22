@@ -9,24 +9,28 @@
     "build": "tsc --noEmit && vite build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "codegen": "json-schema-to-typescript -i ../contracts/schemas -o src/lib/generated"
+    "codegen": "json-schema-to-typescript -i ../contracts/schemas -o src/lib/generated",
+    "test": "vitest run"
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "three": "^0.171.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "vite": "^5.4.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "json-schema-to-typescript": "^15.0.0",
-    "eslint": "^9.0.0",
+    "@eslint/js": "^9.9.0",
+    "@types/node": "^22.5.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@eslint/js": "^9.9.0",
-    "typescript-eslint": "^8.5.0",
+    "@types/three": "^0.171.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "eslint": "^9.0.0",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^5.0.0",
-    "@types/node": "^22.5.0"
+    "json-schema-to-typescript": "^15.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.5.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.9"
   }
 }

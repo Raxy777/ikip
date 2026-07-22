@@ -19,12 +19,23 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Request
-from fastapi.responses import JSONResponse
-from ikip_authz import AuthorizationContext
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.responses import JSONResponse, Response
+from ikip_authz import AuthorizationContext, evaluate_document
 from ikip_authz.sync import AclEvent, EventType, apply_event
 from ikip_contracts import Answer, Outcome
 from ikip_retrieval.pipeline.assemble_evidence import assemble
+from ikip_retrieval.pipeline.authorize import gate_request
 from ikip_retrieval.pipeline.merge_rerank import merge_and_rank
 from ikip_retrieval.pipeline.run import run_query
 from ikip_retrieval.pipeline.types import RetrievalQuery
@@ -81,6 +92,10 @@ def create_app(services: Services | None = None) -> FastAPI:
         Returns the authorized evidence with no model call. Restricted content the caller
         may not see is filtered before ranking and never appears here.
         """
+        # Gate the request before any channel observes the query.  Filtering in
+        # merge_and_rank is defense in depth, not a substitute for this boundary.
+        if not gate_request(ctx).allowed:
+            raise HTTPException(status_code=403, detail="Not authorized.")
         results = [ch.search(_query(req), limit=50) for ch in svc.channels]
         ranked = merge_and_rank(ctx, results)
         evidence = assemble(ranked)
@@ -105,6 +120,94 @@ def create_app(services: Services | None = None) -> FastAPI:
             channels=svc.channels,
             gateway=svc.gateway,
             config_version=svc.config_version,
+        )
+
+    def _authorized_document(document_id: str, ctx: AuthorizationContext):
+        ctx.require_verified()
+        doc = svc.upload_repository.get(document_id) if svc.upload_repository else None
+        acl = svc.acl_store.get(document_id)
+        if doc is None or acl is None or not evaluate_document(ctx, acl).allowed:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        return doc
+
+    @app.post("/documents", status_code=status.HTTP_202_ACCEPTED, tags=["uploads"])
+    async def upload_document(
+        background: BackgroundTasks,
+        ctx: Annotated[AuthorizationContext, Depends(development_identity)],
+        file: UploadFile = File(...),  # noqa: B008
+        sites: str | None = Form(None),
+        roles: str | None = Form(None),
+    ) -> dict:
+        ctx.require_verified()
+        if not svc.uploads:
+            raise HTTPException(status_code=503, detail="Upload service unavailable.")
+        selected_sites = sorted(
+            {x.strip() for x in (sites or ",".join(ctx.sites)).split(",") if x.strip()}
+        )
+        selected_roles = sorted(
+            {x.strip() for x in (roles or ",".join(ctx.roles)).split(",") if x.strip()}
+        )
+        if (
+            not selected_sites
+            or not selected_roles
+            or not set(selected_sites) <= set(ctx.sites)
+            or not set(selected_roles) <= set(ctx.roles)
+        ):
+            raise HTTPException(status_code=403, detail="Upload ACL must be within caller scope.")
+        chunks = []
+        total = 0
+        while chunk := await file.read(1024 * 1024):
+            total += len(chunk)
+            if total > svc.uploads.max_bytes:
+                raise HTTPException(status_code=413, detail="Upload exceeds configured size limit.")
+            chunks.append(chunk)
+        try:
+            doc = svc.uploads.accept(
+                file.filename,
+                file.content_type,
+                b"".join(chunks),
+                ctx.subject_id,
+                selected_sites,
+                selected_roles,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        background.add_task(svc.uploads.process, doc.document_id)
+        return doc.public()
+
+    @app.get("/documents", tags=["uploads"])
+    def list_documents(ctx: Annotated[AuthorizationContext, Depends(development_identity)]) -> dict:
+        # Do not even enumerate document metadata until identity verification succeeds.
+        ctx.require_verified()
+        docs = svc.upload_repository.list() if svc.upload_repository else []
+        visible = [
+            d.public()
+            for d in docs
+            if (acl := svc.acl_store.get(d.document_id)) is not None
+            and evaluate_document(ctx, acl).allowed
+        ]
+        return {"documents": visible, "count": len(visible)}
+
+    @app.get("/documents/{document_id}", tags=["uploads"])
+    def document_status(
+        document_id: str, ctx: Annotated[AuthorizationContext, Depends(development_identity)]
+    ) -> dict:
+        return _authorized_document(document_id, ctx).public()
+
+    @app.get("/documents/{document_id}/content", tags=["uploads"])
+    def document_content(
+        document_id: str, ctx: Annotated[AuthorizationContext, Depends(development_identity)]
+    ) -> Response:
+        doc = _authorized_document(document_id, ctx)
+        if not svc.object_store:
+            raise HTTPException(status_code=503, detail="Object store unavailable.")
+        return Response(
+            content=svc.object_store.get(doc.object_key),
+            media_type=doc.media_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{doc.filename}"',
+                "X-Content-Type-Options": "nosniff",
+            },
         )
 
     @app.post("/admin/acl/revoke", response_model=RevokeResponse)

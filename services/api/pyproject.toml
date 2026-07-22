@@ -9,6 +9,11 @@ dependencies = [
     "ikip-retrieval",
     "ikip-audit",
     "ikip-observability",
+    "ikip-ingestion",
+    "python-multipart>=0.0.20",
+    "pypdf>=5",
+    "boto3>=1.35",
+    "psycopg[binary]>=3.2",
     "fastapi>=0.115",
     "uvicorn>=0.30",
 ]

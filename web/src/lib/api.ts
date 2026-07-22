@@ -22,6 +22,8 @@ import type {
   RevokeRequest,
   RevokeResponse,
   SearchResponse,
+  UploadedDocument,
+  DocumentList,
 } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "/api";
@@ -89,6 +91,20 @@ async function request<T>(
   return payload as T;
 }
 
+
+async function multipart<T>(path: string, form: FormData, identity: DevIdentity): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, { method: "POST", headers: identityHeaders(identity), body: form });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new ApiError(response.status, payload);
+  return payload as T;
+}
+
+async function binary(path: string, identity: DevIdentity): Promise<ArrayBuffer> {
+  const response = await fetch(`${BASE_URL}${path}`, { headers: identityHeaders(identity) });
+  if (!response.ok) throw new ApiError(response.status, await response.json().catch(() => null));
+  return response.arrayBuffer();
+}
+
 export const api = {
   healthz: () => request<HealthResponse>("/healthz"),
 
@@ -97,6 +113,14 @@ export const api = {
 
   answer: (query: QueryRequest, identity: DevIdentity) =>
     request<Answer>("/answer", { method: "POST", body: query, identity }),
+
+  uploadDocument: (file: File, identity: DevIdentity) => { const form = new FormData(); form.append("file", file); return multipart<UploadedDocument>("/documents", form, identity); },
+
+  listDocuments: (identity: DevIdentity) => request<DocumentList>("/documents", { identity }),
+
+  documentStatus: (id: string, identity: DevIdentity) => request<UploadedDocument>(`/documents/${encodeURIComponent(id)}`, { identity }),
+
+  documentContent: (id: string, identity: DevIdentity) => binary(`/documents/${encodeURIComponent(id)}/content`, identity),
 
   revokeAcl: (req: RevokeRequest, identity: DevIdentity) =>
     request<RevokeResponse>("/admin/acl/revoke", { method: "POST", body: req, identity }),

@@ -62,6 +62,32 @@ paths:
         "403": { description: Identity is unverified; no content existence is disclosed. }
         "422": { description: A required development identity header or request field is missing. }
         "503": { description: Development auth is disabled and no production verifier exists. }
+  /documents:
+    post:
+      summary: Upload and process PDF, STL, or STEP multipart content.
+      security: [{ devSubject: [], devRoles: [], devSites: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary }, sites: { type: string }, roles: { type: string } } }
+      responses: { "202": { description: Original retained and processing scheduled. }, "413": { description: Too large. }, "422": { description: Invalid name/type/content. } }
+    get:
+      summary: List authorized uploaded documents and states.
+      security: [{ devSubject: [], devRoles: [], devSites: [] }]
+      responses: { "200": { description: Authorized documents only. } }
+  /documents/{document_id}:
+    get:
+      summary: Get authorized processing status.
+      security: [{ devSubject: [], devRoles: [], devSites: [] }]
+      parameters: [{ in: path, name: document_id, required: true, schema: { type: string } }]
+      responses: { "200": { description: Status. }, "404": { description: Absent or unauthorized. } }
+  /documents/{document_id}/content:
+    get:
+      summary: Stream an authorized immutable original for preview.
+      security: [{ devSubject: [], devRoles: [], devSites: [] }]
+      parameters: [{ in: path, name: document_id, required: true, schema: { type: string } }]
+      responses: { "200": { description: Original bytes. }, "404": { description: Absent or unauthorized. } }
   /admin/acl/revoke:
     post:
       summary: Revoke a seeded in-memory document ACL (development demonstration).
