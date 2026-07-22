@@ -6,7 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+<<<<<<< HEAD
     "build": "tsc -b && vite build",
+=======
+    "build": "tsc --noEmit && vite build",
+>>>>>>> e58cf65 (Frontend)
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "codegen": "json-schema-to-typescript -i ../contracts/schemas -o src/lib/generated"
@@ -20,6 +24,17 @@
     "vite": "^5.4.0",
     "@vitejs/plugin-react": "^4.3.0",
     "json-schema-to-typescript": "^15.0.0",
+<<<<<<< HEAD
     "eslint": "^9.0.0"
+=======
+    "eslint": "^9.0.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@eslint/js": "^9.9.0",
+    "typescript-eslint": "^8.5.0",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "@types/node": "^22.5.0"
+>>>>>>> e58cf65 (Frontend)
   }
 }
