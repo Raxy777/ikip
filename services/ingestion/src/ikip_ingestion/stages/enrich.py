@@ -23,24 +23,9 @@ from ikip_ingestion.extract.types import CanonicalMesh
 N_SAMPLES = 1024   # number of random point pairs
 N_BINS = 64        # histogram bins
 _SEED = 42         # deterministic sampling
-<<<<<<< HEAD
 # Histogram spans [0, D2_RANGE] multiples of the mean pairwise distance. Distances cluster
 # near 1.0 after mean-normalization; 3x mean captures the tail without wasting bins.
 D2_RANGE = 3.0
-=======
-
-
-def _bbox_diagonal(vertices: list[tuple[float, float, float]]) -> float:
-    if not vertices:
-        return 1.0
-    xs = [v[0] for v in vertices]
-    ys = [v[1] for v in vertices]
-    zs = [v[2] for v in vertices]
-    dx = max(xs) - min(xs)
-    dy = max(ys) - min(ys)
-    dz = max(zs) - min(zs)
-    return sqrt(dx * dx + dy * dy + dz * dz) or 1.0
->>>>>>> e58cf65 (Frontend)
 
 
 def _sample_surface_points(
@@ -88,16 +73,11 @@ def compute_d2_descriptor(
     if len(vertices) < 2:
         return [0.0] * n_bins
 
-<<<<<<< HEAD
-=======
-    diag = _bbox_diagonal(vertices)
->>>>>>> e58cf65 (Frontend)
     rng = random.Random(_SEED)
     pts = _sample_surface_points(vertices, faces, n_samples, rng)
 
     # Sample n_samples/2 pairs (each iteration picks two distinct points).
     n_pairs = n_samples // 2
-<<<<<<< HEAD
     raw: list[float] = []
     for i in range(n_pairs):
         p = pts[i * 2]
@@ -118,19 +98,6 @@ def compute_d2_descriptor(
     for d in raw:
         norm_d = d / mean_d
         idx = min(int(norm_d / D2_RANGE * n_bins), n_bins - 1)
-=======
-    distances: list[float] = []
-    for i in range(n_pairs):
-        p = pts[i * 2]
-        q = pts[i * 2 + 1]
-        d = sqrt((p[0]-q[0])**2 + (p[1]-q[1])**2 + (p[2]-q[2])**2) / diag
-        distances.append(d)
-
-    # Bin into [0, 1] range (normalized distances are in [0, 1] by construction).
-    hist = [0.0] * n_bins
-    for d in distances:
-        idx = min(int(d * n_bins), n_bins - 1)
->>>>>>> e58cf65 (Frontend)
         hist[idx] += 1.0
 
     # L2-normalize.
