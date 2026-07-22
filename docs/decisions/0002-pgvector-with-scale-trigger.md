@@ -27,7 +27,7 @@ quarters (fill in real numbers once §9.3 scale figures exist):
 
 - Indexed chunk count exceeds **[TBD, e.g. 5–10M]**.
 - p95 retrieval latency under production filters exceeds **[TBD, e.g. 300 ms]**.
-- ACL-filtered ANN recall drops below the benchmark floor in `evaluation/suites/retrieval_recall`.
+- ACL-filtered ANN recall drops below a future governed, expert-labeled benchmark floor.
 
 At that point, evaluate a dedicated vector engine while preserving the same port and the
 same authorization-before-retrieval guarantee.

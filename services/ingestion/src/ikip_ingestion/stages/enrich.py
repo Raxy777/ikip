@@ -4,13 +4,14 @@ Computes a compact, rotation/translation/scale-invariant shape descriptor from a
 CanonicalMesh so the shape-similarity channel can rank geometrically similar parts.
 
 D2 descriptor: sample N random pairs of surface points, compute pairwise distances,
-normalize by the bounding-box diagonal (scale invariance), bin into a histogram, then
-L2-normalize the histogram vector. The result is invariant to rigid transforms and uniform
-scaling, and cheap to compute on the canonical mesh already produced by Tier-1 handlers.
+normalize by twice the maximum radius from the centroid (scale invariance), bin into a
+histogram, then L2-normalize the histogram vector. The result is invariant to rigid transforms
+and uniform scaling, and cheap to compute on the canonical mesh already produced by Tier-1 handlers.
 
 The descriptor is stored as a flat list[float] so it is engine-neutral and can be written
 directly to a pgvector column or compared in-memory.
 """
+
 from __future__ import annotations
 
 import random
@@ -20,21 +21,26 @@ from ikip_ingestion.extract.types import CanonicalMesh
 
 # Descriptor hyper-parameters. Kept small so the in-memory store and tests are fast;
 # a production deployment can increase N_SAMPLES for higher fidelity.
-N_SAMPLES = 1024   # number of random point pairs
-N_BINS = 64        # histogram bins
-_SEED = 42         # deterministic sampling
+N_SAMPLES = 1024  # number of random point pairs
+N_BINS = 64  # histogram bins
+_SEED = 42  # deterministic sampling
 
 
-def _bbox_diagonal(vertices: list[tuple[float, float, float]]) -> float:
+def _normalization_diameter(vertices: list[tuple[float, float, float]]) -> float:
+    """Return a rigid-transform-invariant upper bound on pairwise distance.
+
+    An axis-aligned bounding-box diagonal changes under rotation. Twice the maximum
+    distance from the centroid is rotation/translation invariant, scales linearly, and
+    bounds every pairwise distance without a quadratic all-pairs scan.
+    """
     if not vertices:
         return 1.0
-    xs = [v[0] for v in vertices]
-    ys = [v[1] for v in vertices]
-    zs = [v[2] for v in vertices]
-    dx = max(xs) - min(xs)
-    dy = max(ys) - min(ys)
-    dz = max(zs) - min(zs)
-    return sqrt(dx * dx + dy * dy + dz * dz) or 1.0
+    count = len(vertices)
+    cx = sum(vertex[0] for vertex in vertices) / count
+    cy = sum(vertex[1] for vertex in vertices) / count
+    cz = sum(vertex[2] for vertex in vertices) / count
+    max_radius = max(sqrt((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2) for x, y, z in vertices)
+    return 2.0 * max_radius or 1.0
 
 
 def _sample_surface_points(
@@ -82,8 +88,8 @@ def compute_d2_descriptor(
     if len(vertices) < 2:
         return [0.0] * n_bins
 
-    diag = _bbox_diagonal(vertices)
-    rng = random.Random(_SEED)
+    diameter = _normalization_diameter(vertices)
+    rng = random.Random(_SEED)  # noqa: S311 -- deterministic geometric sampling, not security
     pts = _sample_surface_points(vertices, faces, n_samples, rng)
 
     # Sample n_samples/2 pairs (each iteration picks two distinct points).
@@ -92,7 +98,7 @@ def compute_d2_descriptor(
     for i in range(n_pairs):
         p = pts[i * 2]
         q = pts[i * 2 + 1]
-        d = sqrt((p[0]-q[0])**2 + (p[1]-q[1])**2 + (p[2]-q[2])**2) / diag
+        d = sqrt((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2) / diameter
         distances.append(d)
 
     # Bin into [0, 1] range (normalized distances are in [0, 1] by construction).

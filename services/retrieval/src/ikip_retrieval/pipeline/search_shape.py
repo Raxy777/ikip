@@ -8,6 +8,7 @@ uniformly in merge_rerank before ranking, so a restricted part can never surface
 Returns an empty list when no shape_descriptor is present on the query (graceful no-op for
 text-only queries that have no reference geometry).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -17,7 +18,7 @@ from ikip_contracts import Authority, ProcessingVersions, Provenance, RetrievalC
 
 from ikip_retrieval.adapters._acl_resolve import resolve_acl
 from ikip_retrieval.pipeline.types import Candidate, RetrievalQuery
-from ikip_retrieval.ports.shape_store import ShapeStore
+from ikip_retrieval.ports.shape_store import ShapeRecord, ShapeStore
 
 
 @dataclass(frozen=True)
@@ -43,22 +44,18 @@ class ShapeSearchChannel:
         if not descriptor:
             return []
 
-        # Authorization filter is applied by the store (allowed_document_ids).
-        # merge_rerank will re-filter; the store filter is defence-in-depth.
-        # We pass frozenset() as a sentinel here — the real filter is in merge_rerank.
-        # The store must still respect it, so we pass ALL as a large open set.
-        # NOTE: the store's allowed_document_ids is the ACL-filtered set; we pass
-        # frozenset() to get all, then merge_rerank filters. This matches the pattern
-        # used by lexical/exact channels (they also return unfiltered candidates).
+        # Like the lexical and exact channels, this channel emits raw candidates and
+        # merge_rerank performs the mandatory authorization step before ranking. The
+        # ShapeStore contract uses None (not a magic document ID) for an unfiltered scan.
         results = self._store.shape_search(
             descriptor,
-            allowed_document_ids=frozenset({"*"}),  # store-level pre-filter disabled; merge_rerank owns auth
+            allowed_document_ids=None,
             limit=limit,
         )
 
         return [self._to_candidate(rec, score) for rec, score in results]
 
-    def _to_candidate(self, rec, score: float) -> Candidate:
+    def _to_candidate(self, rec: ShapeRecord, score: float) -> Candidate:
         pv = ProcessingVersions(
             parser="shape-d2:0.1",
             chunker="shape-d2:0.1",

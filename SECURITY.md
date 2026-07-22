@@ -35,7 +35,7 @@ This file summarizes the non-negotiable invariants and points to the threat mode
 
 See the threat-scenario coverage in the trust-boundary diagram and the adversarial test
 corpus under `tests/security/`. Verifiable isolation is tested in
-`evaluation/suites/access_isolation/`. Note that **inference-level** non-disclosure is
+the deterministic `access_isolation_security` suite. Note that **inference-level** non-disclosure is
 best-effort and is documented as residual risk — see `docs/safety/abstention-policy.md`.
 
 ## Reporting

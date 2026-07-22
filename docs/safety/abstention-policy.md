@@ -25,7 +25,7 @@ grounded, adequately-cited answer.
 ## Residual risk (honest limit)
 
 Retrieval, citation, and preview leakage are testable and tested
-(`evaluation/suites/access_isolation/`). **Inference-level** non-disclosure — never
+(`access_isolation_security`). **Inference-level** non-disclosure — never
 leaking an inference *about* a restricted document's existence or content — cannot be
 fully proven. It is treated as best-effort with named residual risk, and metrics should
 not imply it is guaranteed.

@@ -2,13 +2,14 @@
 
 Two responsibilities:
   1. Statement classification — is a claim a historical observation, a recommendation, an
-     approved procedure, completed work, or an inference? (see docs/safety/statement-classification.md)
+     approved procedure, completed work, or an inference? (See the statement-classification
+     safety documentation.)
   2. Claim-support & citation-coverage validation — does every claim cite authorized
      evidence, carry a defensible class, and disclose conflicts when they exist?
 
 Conflating statement classes is the primary way this platform could contribute to
 industrial harm, so this package carries the highest test bar and feeds
-evaluation/suites/grounding_and_citation. `validate_answer` is deterministic and must
+the grounding/citation regression suite. `validate_answer` is deterministic and must
 ALWAYS hold regardless of model quality; semantic entailment grading is a separate,
 model-assisted concern in evaluation/graders.
 """

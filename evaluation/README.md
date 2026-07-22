@@ -1,29 +1,15 @@
-# Evaluation — Release Gate
+# Evaluation — pilot gate and production roadmap
 
-Evaluation is a **product artifact**, not test scaffolding — hence its top-level
-placement. `just eval` runs the suites and fails the build on regression.
+`python -m evaluation.run --suite all --gate` runs deterministic, provider-free tests for
+retrieval behavior regression, grounding/citation regression, abstention behavior regression, and access-isolation security. A
+failing selected test set makes the gated command fail. This is meaningful for pilot CI,
+but it is **not** a claim of domain answer quality or a replacement for expert evaluation.
 
-## Structure
+Suite names intentionally describe deterministic regression/security checks, not measured recall or precision. They currently map to repository pytest tests; use `--suite NAME` to run one.
+Without `--gate`, failures are reported but the command is informational and exits zero.
 
-| Path | Contents |
-|---|---|
-| `benchmark/golden/` | Curated, expert-graded questions (pointers + metadata; no restricted content committed) |
-| `benchmark/holdout/` | Blind set — access-controlled, git-ignored, never in prompts or tuning |
-| `benchmark/annotations/` | Expected-evidence IDs per question |
-| `graders/` | LLM-as-judge, calibrated against human labels so ongoing eval stays affordable |
-| `suites/retrieval_recall/` | Did we retrieve the expected evidence? |
-| `suites/grounding_and_citation/` | Are claims supported, cited, correctly classed, conflicts disclosed? |
-| `suites/abstention_precision_recall/` | Do we abstain when we should, and only then? |
-| `suites/access_isolation/` | Does restricted content ever surface or get inferred? |
-| `reports/` | Regression outputs, published by CI (git-ignored) |
-
-## Critical path
-
-The golden + holdout sets gate everything downstream and require scarce domain-expert
-time. Budget expert hours explicitly; treat this as the release long pole.
-
-## Affordability
-
-Expert-graded metrics do not scale to every CI run. Graders in `graders/` are LLM-as-judge
-calibrated against a human-labeled subset; recalibrate when the grader model or prompt
-changes (tracked as a processing version in provenance).
+Production release evaluation still requires governed `benchmark/golden` questions,
+access-controlled `benchmark/holdout` data, expert expected-evidence annotations, calibrated
+graders, recorded baselines, and regression reports. Restricted holdout content must never
+be committed or enter prompts/tuning. Budget expert review and recalibrate graders whenever
+models, prompts, or processing versions change.

@@ -35,7 +35,7 @@ not continue to retrieve or cite content here.
   stale ACL denies before its (untrustworthy) site/role data is ever evaluated.
 - `tests/security/acl_leakage/test_stale_acl_does_not_leak.py` — the "revoked upstream,
   stale cache" scenario, at both the filter and full-pipeline (`run_query`) level.
-- `evaluation/suites/access_isolation/` — measures whether restricted content surfaces.
+- `access_isolation_security` — deterministic tests assert that restricted content does not surface.
 
 ## Implemented so far (fail closed)
 

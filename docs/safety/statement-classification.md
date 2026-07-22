@@ -22,4 +22,4 @@ primary way this platform could contribute to industrial harm — e.g. presentin
 2. `inference` claims must still cite the evidence they were synthesized from and be
    visibly marked as inference.
 3. The classifier is validated against an expert-labeled set; disagreement rate is a
-   tracked metric in `evaluation/suites/grounding_and_citation/`.
+   covered by the deterministic `grounding_citation_regression` suite; production quality metrics require expert labels.

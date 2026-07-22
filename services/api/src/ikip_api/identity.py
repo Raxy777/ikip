@@ -1,75 +1,73 @@
-"""Identity → AuthorizationContext boundary.
+"""Development-only identity boundary.
 
-This is the ONE place an AuthorizationContext is constructed for a live request. In
-production this must validate the OIDC/SAML token (signature, issuer, audience, expiry)
-and derive roles/sites from verified claims before setting `identity_verified=True`.
-
-Until that real verification exists, this module ships a DEV-ONLY header-based stub. It is
-deliberately loud: it refuses to run unless IKIP_DEV_AUTH=1 is set, and it logs a warning
-on every request so a dev auth path can never be mistaken for production auth.
-
-    DEV HEADERS (dev mode only):
-      X-Dev-Subject : subject id            (default "dev-user")
-      X-Dev-Roles   : comma-separated roles (default empty -> scope denied)
-      X-Dev-Sites   : comma-separated sites (default empty)
-      X-Dev-Verified: "0" to simulate an unverified token (default verified)
+There is no production token verifier in this prototype. Caller-controlled identity is
+available only when *both* ``IKIP_ENV=development`` and ``IKIP_DEV_AUTH=1`` are set. Every
+protected request must provide subject, roles, and sites explicitly; this module never
+synthesizes an identity. Any non-development environment fails closed.
 """
+
 from __future__ import annotations
 
 import logging
 import os
+from typing import Annotated
 
 from fastapi import Header, HTTPException, status
-
 from ikip_authz import AuthorizationContext
 
 _log = logging.getLogger("ikip.api.identity")
-
-_DEV_FLAG = "IKIP_DEV_AUTH"
+_DEVELOPMENT = "development"
 
 
 def dev_auth_enabled() -> bool:
-    return os.environ.get(_DEV_FLAG) == "1"
+    """Return true only for an explicit, two-factor development configuration."""
+    return (
+        os.environ.get("IKIP_ENV", "").lower() == _DEVELOPMENT
+        and os.environ.get("IKIP_DEV_AUTH") == "1"
+    )
 
 
-def _split(raw: str | None) -> frozenset[str]:
-    if not raw:
-        return frozenset()
-    return frozenset(p.strip() for p in raw.split(",") if p.strip())
+def _split(raw: str) -> frozenset[str]:
+    return frozenset(part.strip() for part in raw.split(",") if part.strip())
 
 
-def dev_identity(
-    x_dev_subject: str | None = Header(default=None),
-    x_dev_roles: str | None = Header(default=None),
-    x_dev_sites: str | None = Header(default=None),
-    x_dev_verified: str | None = Header(default=None),
+def development_identity(
+    x_dev_subject: Annotated[str, Header(min_length=1)],
+    x_dev_roles: Annotated[str, Header(min_length=1)],
+    x_dev_sites: Annotated[str, Header(min_length=1)],
+    x_dev_verified: Annotated[str | None, Header()] = None,
 ) -> AuthorizationContext:
-    """FastAPI dependency: construct the per-request AuthorizationContext.
-
-    Fails closed if dev auth is not explicitly enabled — there is no real token path yet,
-    so without the dev flag the API cannot authenticate anyone and says so.
-    """
+    """Construct an explicitly supplied, caller-controlled development context."""
     if not dev_auth_enabled():
         raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=(
-                "No production identity verification is configured. Set IKIP_DEV_AUTH=1 to "
-                "use the dev header stub (NON-PRODUCTION), or wire real OIDC/SAML token "
-                "validation in ikip_api.identity."
-            ),
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication is unavailable: no production identity verifier is configured.",
         )
 
-    # Verified unless the caller explicitly simulates an unverified token.
+    subject = x_dev_subject.strip()
+    roles = _split(x_dev_roles)
+    sites = _split(x_dev_sites)
+    if not subject or not roles or not sites:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Development subject, roles, and sites must each contain a value.",
+        )
+
     verified = x_dev_verified != "0"
     _log.warning(
-        "DEV AUTH in use (NOT production): subject=%s verified=%s — token signature/issuer/"
-        "audience/expiry are NOT checked.",
-        x_dev_subject or "dev-user",
+        "INSECURE DEVELOPMENT AUTH: caller-controlled identity subject=%s verified=%s",
+        subject,
         verified,
     )
     return AuthorizationContext(
-        subject_id=x_dev_subject or "dev-user",
-        roles=_split(x_dev_roles),
-        sites=_split(x_dev_sites),
+        subject_id=subject,
+        roles=roles,
+        sites=sites,
         identity_verified=verified,
     )
+
+
+# Backwards-compatible import for local callers. It retains the same strict environment gate.
+dev_identity = development_identity
+
+__all__ = ["dev_auth_enabled", "development_identity"]

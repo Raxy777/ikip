@@ -13,9 +13,11 @@ of verifying a signed token, so it must never run outside local development. Eve
 guarantee — authorize-before-retrieval, freshness fail-closed, claim validation — is the
 real implementation from the core packages; only identity verification is faked.
 """
+
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -27,7 +29,7 @@ from ikip_retrieval.pipeline.merge_rerank import merge_and_rank
 from ikip_retrieval.pipeline.run import run_query
 from ikip_retrieval.pipeline.types import RetrievalQuery
 
-from ikip_api.identity import dev_identity
+from ikip_api.identity import development_identity
 from ikip_api.schemas import (
     EvidenceView,
     QueryRequest,
@@ -43,8 +45,11 @@ def create_app(services: Services | None = None) -> FastAPI:
     svc = services or build_services()
     app = FastAPI(
         title="Industrial Knowledge Intelligence Platform — API (dev)",
-        version="0.0.0",
-        description="Decision-support only. Never controls equipment. Dev identity is stubbed.",
+        version="0.1.0-pilot",
+        description=(
+            "Decision-support only. Pilot uses explicitly enabled, insecure "
+            "development identity; no production token verifier is included."
+        ),
     )
     app.state.services = svc
 
@@ -68,7 +73,9 @@ def create_app(services: Services | None = None) -> FastAPI:
         return {"status": "ok"}
 
     @app.post("/search", response_model=SearchResponse)
-    def search(req: QueryRequest, ctx: AuthorizationContext = Depends(dev_identity)) -> SearchResponse:
+    def search(
+        req: QueryRequest, ctx: Annotated[AuthorizationContext, Depends(development_identity)]
+    ) -> SearchResponse:
         """Run the retrieval head only: authorize -> channels -> filter -> rank -> assemble.
 
         Returns the authorized evidence with no model call. Restricted content the caller
@@ -82,12 +89,14 @@ def create_app(services: Services | None = None) -> FastAPI:
             count=len(evidence),
         )
 
-    @app.post("/answer", response_model=Answer)
-    def answer(req: QueryRequest, ctx: AuthorizationContext = Depends(dev_identity)) -> Answer:
+    @app.post("/answer", response_model=Answer, response_model_exclude_none=True)
+    def answer(
+        req: QueryRequest, ctx: Annotated[AuthorizationContext, Depends(development_identity)]
+    ) -> Answer:
         """Run the full pipeline and return a grounded answer or a safe abstention.
 
-        The domain Answer is returned unchanged — the API never reshapes it, so the client
-        consumes exactly what the pipeline produced and validated.
+        The validated domain Answer is serialized with unset optional fields omitted, matching
+        the authoritative static JSON Schema contract.
         """
         return run_query(
             request_id=str(uuid.uuid4()),
@@ -99,12 +108,17 @@ def create_app(services: Services | None = None) -> FastAPI:
         )
 
     @app.post("/admin/acl/revoke", response_model=RevokeResponse)
-    def revoke_acl(req: RevokeRequest, ctx: AuthorizationContext = Depends(dev_identity)) -> RevokeResponse:
+    def revoke_acl(
+        req: RevokeRequest, ctx: Annotated[AuthorizationContext, Depends(development_identity)]
+    ) -> RevokeResponse:
         """Revoke a document's ACL via the sync layer, then confirm it is gone.
 
         Demonstrates that revocation takes effect immediately with no reindexing: a
         subsequent /search or /answer for that document abstains or omits it.
         """
+        ctx.require_verified()
+        if "admin" not in ctx.roles:
+            raise PermissionError("ACL revocation requires the admin role.")
         apply_event(svc.acl_store, AclEvent(type=EventType.REVOKE, document_id=req.document_id))
         return RevokeResponse(
             document_id=req.document_id,

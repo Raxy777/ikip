@@ -1,13 +1,18 @@
-"""Validate that all schemas parse and cross-references resolve.
+"""Validate JSON Schemas and the separately authored static OpenAPI document.
 
-Run by `just contracts-check` and in CI. Extend to validate example payloads
-against their schemas once examples are added under contracts/schemas/examples/.
+Runtime response examples are validated in the API tests because those tests can exercise
+real serialized payloads. This check validates schema metasyntax and static OpenAPI YAML;
+the FastAPI-generated ``/openapi.json`` remains a separate Pydantic-derived document.
 """
+
 from __future__ import annotations
 
 import json
 import sys
 from pathlib import Path
+
+import yaml
+from jsonschema import validators
 
 CONTRACTS = Path(__file__).resolve().parents[1]
 
@@ -17,17 +22,27 @@ def main() -> int:
     files = sorted(CONTRACTS.glob("schemas/*.schema.json")) + sorted(
         CONTRACTS.glob("events/*.schema.json")
     )
-    for f in files:
+    for path in files:
         try:
-            json.loads(f.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as e:  # noqa: PERF203
-            errors.append(f"{f.name}: {e}")
+            schema = json.loads(path.read_text(encoding="utf-8"))
+            validators.validator_for(schema).check_schema(schema)
+        except (json.JSONDecodeError, ValueError, TypeError) as exc:  # noqa: PERF203
+            errors.append(f"{path.name}: {exc}")
+
+    openapi_path = CONTRACTS / "openapi" / "api.v1.yaml"
+    try:
+        openapi = yaml.safe_load(openapi_path.read_text(encoding="utf-8"))
+        if openapi.get("openapi") != "3.1.0" or not isinstance(openapi.get("paths"), dict):
+            errors.append(f"{openapi_path.name}: expected an OpenAPI 3.1 document with paths")
+    except (yaml.YAMLError, AttributeError) as exc:
+        errors.append(f"{openapi_path.name}: {exc}")
+
     if errors:
-        print("Schema validation FAILED:", file=sys.stderr)
-        for e in errors:
-            print(f"  - {e}", file=sys.stderr)
+        print("Contract validation FAILED:", file=sys.stderr)
+        for error in errors:
+            print(f"  - {error}", file=sys.stderr)
         return 1
-    print(f"All {len(files)} schema file(s) parsed successfully.")
+    print(f"Validated {len(files)} JSON Schemas and {openapi_path.name}.")
     return 0
 
 

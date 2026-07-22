@@ -38,4 +38,4 @@ When two authorized sources disagree, rank by:
 
 - `services/retrieval/.../pipeline/merge_rerank.py` — authority ranking.
 - `packages/ikip-statements` — validates conflict disclosure before an answer is shown.
-- `evaluation/suites/grounding_and_citation/` — includes conflicting-source cases.
+- `grounding_citation_regression` — deterministic tests include conflicting-source cases.

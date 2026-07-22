@@ -1,72 +1,134 @@
 openapi: 3.1.0
 info:
-  title: Industrial Knowledge Intelligence Platform API
-  version: 1.0.0
+  title: Industrial Knowledge Intelligence Platform pilot API
+  version: 0.1.0-pilot
   description: >
-    Decision-support API. Every query is authorized before retrieval. Answers are
-    evidence-grounded with claim-level citations, or a safe abstention. No endpoint
-    controls equipment.
+    Runnable, provider-free decision-support prototype. It never controls equipment.
+    Search results are ACL-filtered before ranking and answers are cited or abstain.
+    Authentication is NOT production-ready: the required, caller-controlled X-Dev-Subject,
+    X-Dev-Roles, and X-Dev-Sites headers are accepted only when IKIP_ENV=development and
+    IKIP_DEV_AUTH=1. Values are never synthesized. No JWT verifier is included.
 servers:
-  - url: /api/v1
+  - url: /
 paths:
-  /query:
+  /healthz:
+    get:
+      summary: Liveness check
+      operationId: healthz
+      responses:
+        "200":
+          description: Process is live.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties: { status: { type: string, const: ok } }
+  /search:
     post:
-      summary: Ask a grounded question or receive a safe abstention.
-      operationId: submitQuery
-      security: [{ bearerAuth: [] }]
+      summary: Return authorized ranked evidence without answer synthesis.
+      operationId: search
+      security: [{ devSubject: [], devRoles: [], devSites: [] }]
       requestBody:
         required: true
         content:
-          application/json:
-            schema:
-              type: object
-              required: [question]
-              properties:
-                question: { type: string }
-                asset_filter: { type: object, additionalProperties: true }
-                site_filter: { type: array, items: { type: string } }
+          application/json: { schema: { $ref: "#/components/schemas/QueryRequest" } }
+      responses:
+        "200":
+          description: Authorized evidence only.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/SearchResponse" } }
+        "400": { description: A development identity header contains no usable value. }
+        "403": { description: Identity is unverified; no content existence is disclosed. }
+        "422": { description: A required development identity header or request field is missing. }
+        "503": { description: Development auth is disabled and no production verifier exists. }
+  /answer:
+    post:
+      summary: Return a templated, evidence-cited pilot answer or safe abstention.
+      description: Uses DevAnswerGateway; no external or production model gateway is included.
+      operationId: answer
+      security: [{ devSubject: [], devRoles: [], devSites: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: "#/components/schemas/QueryRequest" } }
       responses:
         "200":
           description: Grounded answer or abstention.
           content:
             application/json:
               schema: { $ref: "../schemas/answer.schema.json" }
-        "403":
-          description: Denied without revealing restricted content.
-  /citations/{claimId}/source:
-    get:
-      summary: Open the cited source. Authorization is re-checked here because access may have changed.
-      operationId: getCitationSource
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - name: claimId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200": { description: Short-lived authorized preview of the exact source location. }
-        "403": { description: Access or status changed; explained without leakage. }
-  /feedback:
+        "400": { description: A development identity header contains no usable value. }
+        "403": { description: Identity is unverified; no content existence is disclosed. }
+        "422": { description: A required development identity header or request field is missing. }
+        "503": { description: Development auth is disabled and no production verifier exists. }
+  /admin/acl/revoke:
     post:
-      summary: Submit feedback or a correction that creates a governed review item.
-      operationId: submitFeedback
-      security: [{ bearerAuth: [] }]
+      summary: Revoke a seeded in-memory document ACL (development demonstration).
+      description: Requires a verified development identity carrying the exact admin role.
+      operationId: revokeAcl
+      security: [{ devSubject: [], devRoles: [], devSites: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [request_id]
-              properties:
-                request_id: { type: string }
-                rating: { type: string, enum: [helpful, unhelpful, incorrect] }
-                note: { type: string }
+              required: [document_id]
+              properties: { document_id: { type: string, minLength: 1 } }
       responses:
-        "202": { description: Feedback recorded / review item created. }
+        "200":
+          description: Revocation was applied to this process's in-memory ACL store.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [document_id, revoked]
+                properties:
+                  document_id: { type: string }
+                  revoked: { type: boolean }
+        "400": { description: A development identity header contains no usable value. }
+        "403": { description: Verified admin role required. }
+        "422": { description: A required development identity header or request field is missing. }
+        "503": { description: Development auth is disabled and no production verifier exists. }
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    devSubject:
+      type: apiKey
+      in: header
+      name: X-Dev-Subject
+      description: INSECURE, required development-only caller-controlled subject; never production auth.
+    devRoles:
+      type: apiKey
+      in: header
+      name: X-Dev-Roles
+      description: INSECURE, required development-only comma-separated caller-controlled roles.
+    devSites:
+      type: apiKey
+      in: header
+      name: X-Dev-Sites
+      description: INSECURE, required development-only comma-separated caller-controlled sites.
+  schemas:
+    QueryRequest:
+      type: object
+      required: [question]
+      properties:
+        question: { type: string, minLength: 1 }
+        asset_ids: { type: array, items: { type: string }, default: [] }
+        sites: { type: array, items: { type: string }, default: [] }
+    Evidence:
+      type: object
+      required: [evidence_id, document_id, text, authority]
+      properties:
+        evidence_id: { type: string }
+        document_id: { type: string }
+        text: { type: string }
+        authority: { type: string }
+        retrieval_score: { type: [number, "null"] }
+        retrieved_by: { type: [string, "null"] }
+    SearchResponse:
+      type: object
+      required: [evidence, count]
+      properties:
+        evidence: { type: array, items: { $ref: "#/components/schemas/Evidence" } }
+        count: { type: integer, minimum: 0 }

@@ -33,8 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - run: uv sync --all-packages
-      # Gates the release on benchmark regression. Holdout is provisioned at runtime,
-      # never committed (see evaluation/benchmark/holdout/README.md).
+      # Runs deterministic regression/security tests; it does not compute quality metrics.
       - name: Evaluation gate
         run: uv run python -m evaluation.run --suite all --gate
 

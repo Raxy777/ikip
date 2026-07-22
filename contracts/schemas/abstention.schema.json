@@ -2,14 +2,24 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ikip.local/contracts/schemas/abstention.v1.json",
   "title": "Abstention",
-  "description": "A safe refusal to answer, with a machine-readable reason and a suggested next step. Abstention is a measured capability with its own precision/recall metrics — never a silent failure.",
+  "description": "A safe refusal to answer, with a machine-readable reason and a suggested next step. Abstention behavior must be tested and must never become a silent failure.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["reason", "message"],
+  "required": [
+    "reason",
+    "message"
+  ],
   "properties": {
     "reason": {
       "type": "string",
-      "enum": ["insufficient", "ambiguous", "stale", "conflicting", "unauthorized_scope", "unavailable"],
+      "enum": [
+        "insufficient",
+        "ambiguous",
+        "stale",
+        "conflicting",
+        "unauthorized_scope",
+        "unavailable"
+      ],
       "description": "unauthorized_scope must be phrased to the user WITHOUT revealing that restricted content exists."
     },
     "message": {

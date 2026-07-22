@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "Industrial Knowledge Intelligence Platform — Unified Asset & Operations Brain"
 requires-python = ">=3.12"
 readme = "README.md"
+dependencies = ["psycopg[binary]>=3.2"]
 
 # This is the workspace root. Deployable services and shared libraries are
 # managed as workspace members so shared contracts cannot drift between them.
@@ -30,6 +31,7 @@ dev = [
     "ruff>=0.6",
     "jsonschema>=4",
     "httpx>=0.27",
+    "pyyaml>=6.0",
 ]
 
 [tool.ruff]
