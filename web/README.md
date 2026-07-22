@@ -1,25 +1,5 @@
 # Web Application
 
-<<<<<<< HEAD
-Browser UI: governed search, cited Q&A, source viewer with highlighted citations, asset
-profiles, upload, human review queue, and administration.
-
-## Feature areas (`src/features/`)
-
-| Feature | Purpose |
-|---|---|
-| `search` | Governed search with asset/site filters |
-| `answer` | Cited answer view — claim-level citations, statement-class + authority indicators, disclosed conflicts, or abstention |
-| `source-viewer` | Highlighted source preview; re-checks authorization on open |
-| `asset-profile` | Asset-centric history and linked documents |
-| `review-queue` | Reviewer actions: authority, identity, ambiguity, merge/split |
-| `admin` | Document governance, ACLs, corrections, audit |
-
-## Generated types
-
-`src/lib/generated/` holds TypeScript types generated from `contracts/schemas` via
-`npm run codegen`. Do not hand-edit; the directory is git-ignored except its marker.
-=======
 Browser UI for the API in `services/api` (`ikip_api.app:app`): governed search, cited
 answers with claim-level citations, a source viewer that re-checks authorization, and an
 admin panel for live ACL revocation. No backend code was changed to build this — the dev
@@ -107,4 +87,3 @@ same approach `ikip_contracts.models` takes on the Python side until codegen exi
 `contracts/codegen/generate.py` / the `json-schema-to-typescript` step is wired up for the
 web package; it's currently empty (git-ignored except its `.gitkeep` marker) and unused by
 the app.
->>>>>>> e58cf65 (Frontend)
