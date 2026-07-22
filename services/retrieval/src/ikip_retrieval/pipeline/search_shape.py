@@ -43,16 +43,16 @@ class ShapeSearchChannel:
         if not descriptor:
             return []
 
-        # Authorization filter is applied by the store (allowed_document_ids).
-        # merge_rerank will re-filter; the store filter is defence-in-depth.
-        # We pass frozenset() as a sentinel here — the real filter is in merge_rerank.
-        # The store must still respect it, so we pass ALL as a large open set.
-        # NOTE: the store's allowed_document_ids is the ACL-filtered set; we pass
-        # frozenset() to get all, then merge_rerank filters. This matches the pattern
-        # used by lexical/exact channels (they also return unfiltered candidates).
+        # Authorization is owned by merge_rerank, which re-filters every candidate against
+        # the request's AuthorizationContext before ranking (same pattern as the lexical and
+        # exact channels — they also return unfiltered candidates). We therefore pass
+        # allowed_document_ids=None, the store's documented "no pre-filter" sentinel, so the
+        # channel surfaces all shape matches and merge_rerank drops the unauthorized ones.
+        # (An empty frozenset would mean deny-all; a set literal like {"*"} would match no
+        # real document id and silently return nothing — both are wrong here.)
         results = self._store.shape_search(
             descriptor,
-            allowed_document_ids=frozenset({"*"}),  # store-level pre-filter disabled; merge_rerank owns auth
+            allowed_document_ids=None,
             limit=limit,
         )
 
